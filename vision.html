@@ -212,23 +212,29 @@
       </div>
     </div>
 
-    <div class="mt-6 flex flex-col md:flex-row justify-center items-center gap-6">
-      <div id="prediction-display" class="glass-box">
-        <p class="text-2xl font-bold text-cyan-400">Terdeteksi: <span id="prediction-output">...</span></p>
-      </div>
-      <div class="text-left glass-box">
-        <label for="confidenceSlider" class="text-sm text-white-400">Keyakinan: <span id="confidenceValue">50</span>%</label>
-        <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
-      </div>
+<div class="mt-6 flex flex-col items-center gap-6">
+  <div class="flex flex-col md:flex-row justify-center items-center gap-6">
+    <div id="prediction-display" class="glass-box">
+      <p class="text-2xl font-bold text-cyan-400">
+        Terdeteksi: <span id="prediction-output">...</span>
+      </p>
+    </div>
+    <div class="text-left glass-box">
+      <label for="confidenceSlider" class="text-sm text-white-400">
+        Keyakinan: <span id="confidenceValue">50</span>%
+      </label>
+      <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
     </div>
   </div>
-    <!-- Footer -->
-    <footer class="flex justify-center mt-12 mb-6 px-4">
-        <div class="glass-box text-sm px-6 py-3 rounded-full shadow-lg">
-            <p class="font-medium tracking-wide">© Jawa_321 & zeiz4s</p>
-        </div>
-    </footer>
-</body>
+
+  <!-- 👇 Your footer element moved below the slider -->
+  <footer class="flex justify-center mt-6 px-4">
+    <div class="glass-box text-sm px-6 py-3 rounded-full shadow-lg">
+      <p class="font-medium tracking-wide">© Jawa_321 & zeiz4s</p>
+    </div>
+  </footer>
+</div>
+
 
 <script type="module">
     const videoElement = document.querySelector('.input_video');
