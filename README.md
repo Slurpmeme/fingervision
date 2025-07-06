@@ -1,6 +1,6 @@
 # AI Hand Gesture Recognition
 
-This project is a real-time, in-browser computer vision application that uses a custom-trained YOLOv8 model to detect and classify hand gestures from a webcam feed. It combines a powerful deep learning model for gesture recognition with MediaPipe for visual effects, creating a responsive and interactive experience.
+This project is a real-time, in-browser computer vision application that uses a custom-trained YOLOv8 model to detect and classify hand gestures from a webcam feed. It combines a deep learning model for gesture recognition with MediaPipe for visual effects, creating a responsive and interactive experience.
 
 
 ---
@@ -16,7 +16,7 @@ This project is a real-time, in-browser computer vision application that uses a 
 
 ## How It Works
 
-This project uses a combination of powerful web technologies:
+This project uses a combination of :
 
 * **TensorFlow.js:** This library allows us to run our custom-trained YOLOv8 model directly in the browser, with no server-side processing required.
 * **YOLOv8:** A state-of-the-art object detection model that we trained on a combined dataset to recognize hand gestures from full-color images.
@@ -78,8 +78,9 @@ The website should now be running! It will ask for camera permission when you na
 
 ## Training Your Own Model
 
-This repository uses a pre-trained model. If you wish to train your own, the process involves using a Google Colab notebook to:
+This repository uses a pre-trained model. If you wish to train your own, the process involves using a notebook to:
 1.  Download the **HaGRID** and **Fingers** datasets from Kaggle.
 2.  Process and combine the datasets into the YOLOv8 format.
 3.  Train a YOLOv8 model on the combined data.
 4.  Export the final trained model to the TensorFlow.js format (`..._web_model` folder).
+
