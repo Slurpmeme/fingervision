@@ -2,7 +2,6 @@
 
 This project is a real-time, in-browser computer vision application that uses a custom-trained YOLOv8 model to detect and classify hand gestures from a webcam feed. It combines a powerful deep learning model for gesture recognition with MediaPipe for visual effects, creating a responsive and interactive experience.
 
-![Demo Screenshot](https://ibb.co/fGCnBzB6.png)
 
 ---
 
