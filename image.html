@@ -1,47 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image-Based Gesture Detection</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Image Classification - Hand Gesture Recognition</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            padding: 1rem;
+        }
+
+        /* --- Theme Styling --- */
+        body.dark-theme {
+            background-color: #1a202c;
+            color: #ffffff;
+        }
+        body.dark-theme h1 {
+            color: #22d3ee;
+        }
+        body.dark-theme p, body.dark-theme label {
+            color: #a0aec0;
+        }
+        body.dark-theme a {
+            color: #22d3ee;
+            transition: color 0.3s ease;
+        }
+        body.dark-theme a:hover {
+            color: #06b6d4;
+        }
+        body.dark-theme .content-box {
+            color: #e2e8f0;
+        }
+        body.dark-theme #detectionResult {
+            color: #22d3ee;
+        }
+        body.dark-theme input[type="file"]::file-selector-button {
+            background-color: #4c1d95;
+            color: #e0e7ff;
+        }
+         body.dark-theme input[type="file"]::file-selector-button:hover {
+            background-color: #5b21b6;
+        }
+        body.dark-theme .btn-primary {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        body.dark-theme .btn-primary:hover {
+            background-color: #2563eb;
+        }
+
+        body.light-theme {
+            background-color: #f7fafc;
+            color: #2d3748;
+        }
+        body.light-theme h1 {
+            color: #0d9488;
+        }
+        body.light-theme p, body.light-theme label {
+            color: #4a5568;
+        }
+        body.light-theme a {
+            color: #0d9488;
+            transition: color 0.3s ease;
+        }
+        body.light-theme a:hover {
+            color: #0f766e;
+        }
+        body.light-theme .content-box {
+            color: #2d3748;
+        }
+        body.light-theme #detectionResult {
+            color: #0d9488;
+        }
+        body.light-theme input[type="file"]::file-selector-button {
+            background-color: #f5f3ff;
+            color: #7c3aed;
+        }
+        body.light-theme input[type="file"]::file-selector-button:hover {
+            background-color: #ede9fe;
+        }
+        body.light-theme .btn-primary {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        body.light-theme .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .content-box {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        body.light-theme .content-box {
+             background: rgba(255, 255, 255, 0.8);
+             border: 1px solid rgba(200, 200, 200, 0.5);
+        }
+
+        .bg-circles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.6;
+            filter: blur(50px);
+        }
+        .circle-1 { width: 300px; height: 300px; background: linear-gradient(135deg, rgba(74, 222, 128, 0.8), rgba(6, 182, 212, 0.8)); top: 10%; left: 5%; }
+        .circle-2 { width: 400px; height: 400px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(250, 204, 21, 0.8)); bottom: 5%; right: 10%; }
+        .circle-3 { width: 250px; height: 250px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.8), rgba(236, 72, 153, 0.8)); top: 60%; left: 20%; }
+        
+        body.light-theme .circle { opacity: 0.3; filter: blur(40px); }
     </style>
 </head>
-<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
-
-    <div class="w-full max-w-2xl mx-auto text-center">
-        <a href="index.html" class="text-cyan-400 hover:text-cyan-300 mb-8 inline-block">&larr; Back to Home</a>
-        <h1 class="text-3xl md:text-4xl font-bold mb-4">Image Gesture Detector</h1>
-        <p class="text-gray-400 mb-6">Upload an image to detect the hand gesture.</p>
-
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600 cursor-pointer"/>
-            <div id="image-container" class="mt-4 hidden">
-                <canvas id="output_canvas" class="max-w-full h-auto rounded-lg"></canvas>
-            </div>
-            <p id="prediction-output" class="text-2xl font-bold text-cyan-400 mt-4 h-8"></p>
-        </div>
+<body class="dark-theme">
+    <div class="bg-circles">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
     </div>
 
+    <div class="w-full max-w-3xl mx-auto text-center relative z-10">
+        <a href="index.html" class="mb-8 inline-block">&larr; Back to Home</a>
+        
+        <h1 class="text-3xl md:text-4xl font-bold mb-8">Image Classification</h1>
+        
+        <div class="content-box space-y-4">
+            <p>Upload your image here to detect the hand gesture.</p>
+            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold"/>
+            
+            <div id="image-container" class="mt-4 hidden bg-black/20 rounded-lg overflow-hidden">
+                <canvas id="output_canvas" class="max-w-full h-auto mx-auto"></canvas>
+            </div>
+
+            <p class="mt-4 text-xl font-semibold">Detection Result: <span id="detectionResult">No image yet</span></p>
+        </div>
+    </div>
+    <!-- Footer -->
+    <footer class="flex justify-center mt-12 mb-6 px-4">
+        <div class="glass-box text-sm px-6 py-3 rounded-full shadow-lg">
+            <p class="font-medium tracking-wide">© Jawa_321 & zeiz4s</p>
+        </div>
+    </footer>
+</body>
 <script type="module">
+    // --- Theme Script ---
+    const body = document.body;
+    function setTheme(theme) {
+        body.className = theme === 'dark' ? 'dark-theme' : 'light-theme';
+        localStorage.setItem('theme', theme);
+    }
+    const savedTheme = localStorage.getItem('theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+    // --- End Theme Script ---
+
     const imageUpload = document.getElementById('imageUpload');
     const imageContainer = document.getElementById('image-container');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
-    const predictionOutput = document.getElementById('prediction-output');
+    const detectionResult = document.getElementById('detectionResult');
 
     const CLASS_NAMES = { 0: "fist", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
     let model = null;
 
     async function loadYoloModel() {
-        predictionOutput.textContent = 'Loading Model...';
-        model = await tf.loadGraphModel('./yolov8n_web_model/model.json');
-        predictionOutput.textContent = 'Upload an image to begin.';
-        console.log("YOLOv8 model loaded successfully.");
+        detectionResult.textContent = 'Loading Model...';
+        try {
+            model = await tf.loadGraphModel('./yolov8n_web_model/model.json');
+            detectionResult.textContent = 'Please upload an image.';
+            console.log("YOLOv8 model loaded successfully.");
+        } catch (error) {
+            detectionResult.textContent = 'Error loading model.';
+            console.error("Error loading YOLOv8 model:", error);
+        }
     }
 
     imageUpload.addEventListener('change', async (event) => {
@@ -65,7 +220,7 @@
     });
 
     async function detect(img) {
-        predictionOutput.textContent = 'Detecting...';
+        detectionResult.textContent = 'Detecting...';
         const inputTensor = tf.tidy(() => {
             const frame = tf.browser.fromPixels(img);
             const resized = tf.image.resizeBilinear(frame, [384, 384]);
@@ -74,7 +229,7 @@
 
         const outputTensor = await model.executeAsync(inputTensor);
         const [boxes, scores, classes] = await processOutput(outputTensor, 0.5, 0.45);
-        drawResults(boxes, scores, classes);
+        drawResults(img, boxes, scores, classes);
 
         tf.dispose([inputTensor, outputTensor]);
     }
@@ -98,7 +253,10 @@
         return [nmsBoxes, nmsScores, nmsClasses];
     }
 
-    function drawResults(boxes, scores, classes) {
+    function drawResults(img, boxes, scores, classes) {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(img, 0, 0);
+        
         let detectedGesture = "No gesture detected.";
         for (let i = 0; i < scores.length; ++i) {
             const [x, y, w, h] = boxes[i];
@@ -106,22 +264,26 @@
             const score = (scores[i] * 100).toFixed(1);
             detectedGesture = `${label} (Confidence: ${score}%)`;
 
-            const x1 = (x - w / 2) * canvasElement.width;
-            const y1 = (y - h / 2) * canvasElement.height;
-            const width = w * canvasElement.width;
-            const height = h * canvasElement.height;
+            const x1 = (x - w / 2) * img.width;
+            const y1 = (y - h / 2) * img.height;
+            const width = w * img.width;
+            const height = h * img.height;
 
-            canvasCtx.strokeStyle = '#06B6D4';
+            // Use the theme's primary color for the box
+            const boxColor = document.body.classList.contains('dark-theme') ? '#22d3ee' : '#0d9488';
+            canvasCtx.strokeStyle = boxColor;
             canvasCtx.lineWidth = 4;
             canvasCtx.strokeRect(x1, y1, width, height);
-            canvasCtx.fillStyle = '#06B6D4';
+            
+            canvasCtx.fillStyle = boxColor;
             const textWidth = canvasCtx.measureText(detectedGesture).width;
             canvasCtx.fillRect(x1, y1 - 25, textWidth + 10, 25);
+            
             canvasCtx.fillStyle = '#FFFFFF';
             canvasCtx.font = '18px Inter';
             canvasCtx.fillText(detectedGesture, x1 + 5, y1 - 5);
         }
-        predictionOutput.textContent = detectedGesture;
+        detectionResult.textContent = detectedGesture;
     }
 
     loadYoloModel();
