@@ -23,10 +23,20 @@
         .video-container {
             position: relative;
             width: 100%;
-            /* This padding-top creates a 4:3 aspect ratio box */
-            padding-top: 75%; 
+            max-width: 640px;
+            margin: auto;
+            /* Default aspect ratio for desktop */
+            aspect-ratio: 640 / 480;
         }
-        /* Canvas and video will be positioned absolutely within the container */
+        /* --- FIX FOR MOBILE --- */
+        /* On tall, narrow screens, let the height be automatic */
+        @media (orientation: portrait) {
+            .video-container {
+                aspect-ratio: unset;
+                height: auto;
+            }
+        }
+
         .output_canvas, .input_video {
             position: absolute;
             top: 0;
@@ -134,7 +144,6 @@
         videoElement.srcObject = stream;
         
         videoElement.onloadedmetadata = () => {
-            // Set canvas dimensions to match the video feed
             canvasElement.width = videoElement.videoWidth;
             canvasElement.height = videoElement.videoHeight;
             loadingText.style.display = 'none';
@@ -199,14 +208,6 @@
         let detectedGesture = "...";
         let isOneSign = false;
 
-        if (boxes.length > 0) {
-            const label = CLASS_NAMES[classes[0]];
-            if (label === 'one') isOneSign = true;
-
-            const score = (scores[0] * 100).toFixed(1);
-            detectedGesture = `${label} (Conf: ${score}%)`;
-        }
-        
         if (handLandmarks) {
             drawConnectors(canvasCtx, handLandmarks, HAND_CONNECTIONS, { color: 'lime', lineWidth: 2 });
             drawLandmarks(canvasCtx, handLandmarks, { color: 'red', radius: 4 });
@@ -226,17 +227,22 @@
             const height = (maxY - minY + 2 * padding) * canvasElement.height;
 
             canvasCtx.strokeStyle = '#06B6D4';
-            canvasCtx.lineWidth = 4;
+            canvasCtx.lineWidth = 5;
             canvasCtx.strokeRect(x1, y1, width, height);
 
             if (boxes.length > 0) {
-                canvasCtx.fillStyle = '#06B6D4';
-                const textWidth = canvasCtx.measureText(detectedGesture).width;
-                canvasCtx.fillRect(x1, y1 - 25, textWidth + 10, 25);
-                canvasCtx.fillStyle = '#FFFFFF';
-                canvasCtx.font = '18px Inter';
-                canvasCtx.fillText(detectedGesture, x1 + 5, y1 - 5);
+                const label = CLASS_NAMES[classes[0]];
+                if (label === 'one') isOneSign = true;
+                const score = (scores[0] * 100).toFixed(1);
+                detectedGesture = `${label} (Conf: ${score}%)`;
             }
+
+            canvasCtx.fillStyle = '#06B6D4';
+            const textWidth = canvasCtx.measureText(detectedGesture).width;
+            canvasCtx.fillRect(x1, y1 - 25, textWidth + 10, 25);
+            canvasCtx.fillStyle = '#FFFFFF';
+            canvasCtx.font = '18px Inter';
+            canvasCtx.fillText(detectedGesture, x1 + 5, y1 - 5);
 
             if (isOneSign) {
                 const pointerTip = handLandmarks[8];
