@@ -31,9 +31,6 @@ To get this project running on your own computer, follow these simple steps.
 
 First, get the project files onto your machine. You can either download the ZIP file or use Git to clone the repository.
 
-```bash
-git clone [your-github-repository-url]
-```
 
 ### 2. Set Up the Project Folder
 
