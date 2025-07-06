@@ -84,3 +84,5 @@ This repository uses a pre-trained model. If you wish to train your own, the pro
 3.  Train a YOLOv8 model on the combined data.
 4.  Export the final trained model to the TensorFlow.js format (`..._web_model` folder).
 
+colab link : http://colab.research.google.com/drive/1x389RumPrBGE7g2sgNERvs9rzIoWgmXR
+
