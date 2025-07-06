@@ -20,19 +20,19 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        .container {
+        .video-container {
             position: relative;
             width: 100%;
-            max-width: 640px;
-            margin: auto;
+            /* This padding-top creates a 4:3 aspect ratio box */
+            padding-top: 75%; 
         }
-        /* Canvas and video will be stacked on top of each other */
+        /* Canvas and video will be positioned absolutely within the container */
         .output_canvas, .input_video {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: auto;
+            height: 100%;
             border-radius: 0.75rem;
         }
         .input_video {
@@ -57,19 +57,19 @@
         <h1 class="text-3xl md:text-4xl font-bold mb-2">YOLOv8 Hand Gesture Detector</h1>
         <p class="text-gray-400 mb-6">Using your new color-aware model!</p>
 
-        <div class="container bg-gray-800 rounded-xl p-2" style="aspect-ratio: 640 / 480;">
+        <div class="video-container bg-gray-800 rounded-xl p-2">
             <video class="input_video" autoplay playsinline></video>
-            <canvas class="output_canvas" width="640" height="480"></canvas>
+            <canvas class="output_canvas"></canvas>
             <div class="loading">
                 <p id="loading-text">Loading Camera and Model...</p>
             </div>
         </div>
         
-        <div class="mt-6 flex justify-center items-center gap-6">
-            <div id="prediction-display" class="bg-gray-800 rounded-lg p-4">
+        <div class="mt-6 flex flex-col md:flex-row justify-center items-center gap-6">
+            <div id="prediction-display" class="bg-gray-800 rounded-lg p-4 w-full md:w-auto">
                  <p class="text-2xl font-bold text-cyan-400">Predicted: <span id="prediction-output">...</span></p>
             </div>
-            <div class="text-left bg-gray-800 rounded-lg p-4">
+            <div class="text-left bg-gray-800 rounded-lg p-4 w-full md:w-auto">
                 <label for="confidenceSlider" class="text-sm text-gray-400">Confidence: <span id="confidenceValue">50</span>%</label>
                 <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
             </div>
@@ -134,13 +134,16 @@
         videoElement.srcObject = stream;
         
         videoElement.onloadedmetadata = () => {
+            // Set canvas dimensions to match the video feed
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
             loadingText.style.display = 'none';
             requestAnimationFrame(detect);
         };
     }
 
     async function detect() {
-        if (!model) {
+        if (!model || videoElement.paused || videoElement.ended) {
             requestAnimationFrame(detect);
             return;
         }
@@ -207,6 +210,33 @@
         if (handLandmarks) {
             drawConnectors(canvasCtx, handLandmarks, HAND_CONNECTIONS, { color: 'lime', lineWidth: 2 });
             drawLandmarks(canvasCtx, handLandmarks, { color: 'red', radius: 4 });
+
+            let minX = 1, maxX = 0, minY = 1, maxY = 0;
+            for (const landmark of handLandmarks) {
+                minX = Math.min(minX, landmark.x);
+                maxX = Math.max(maxX, landmark.x);
+                minY = Math.min(minY, landmark.y);
+                maxY = Math.max(maxY, landmark.y);
+            }
+
+            const padding = 0.02;
+            const x1 = (minX - padding) * canvasElement.width;
+            const y1 = (minY - padding) * canvasElement.height;
+            const width = (maxX - minX + 2 * padding) * canvasElement.width;
+            const height = (maxY - minY + 2 * padding) * canvasElement.height;
+
+            canvasCtx.strokeStyle = '#06B6D4';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeRect(x1, y1, width, height);
+
+            if (boxes.length > 0) {
+                canvasCtx.fillStyle = '#06B6D4';
+                const textWidth = canvasCtx.measureText(detectedGesture).width;
+                canvasCtx.fillRect(x1, y1 - 25, textWidth + 10, 25);
+                canvasCtx.fillStyle = '#FFFFFF';
+                canvasCtx.font = '18px Inter';
+                canvasCtx.fillText(detectedGesture, x1 + 5, y1 - 5);
+            }
 
             if (isOneSign) {
                 const pointerTip = handLandmarks[8];
