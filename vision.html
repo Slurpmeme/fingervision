@@ -1,100 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLOv8 Hand Gesture Detection</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deteksi Gerakan Tangan YOLOv8</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js"></script>
 
-    <!-- MediaPipe for hand landmarks (for ESP effect) -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js" crossorigin="anonymous"></script>
-    
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .video-container {
-            position: relative;
-            width: 90vw;                  /* Keep some margin on mobile */
-            max-width: 640px;            /* Still limit it on larger screens */
-            aspect-ratio: 4 / 3;         /* Default ratio */
-            margin: auto;
-            border-radius: 0.75rem;
-            background-color: #1f2937;   /* Tailwind's gray-800 */
-            overflow: hidden;
-        }
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
 
-        @media (max-width: 768px) {
-            .video-container {
-                height: 70vh;             /* Allow scrolling if needed */
-                width: 90vw;
-                aspect-ratio: unset;
-                overflow-y: auto;
-            }
+    body.dark-theme {
+      background-color: #1a202c;
+      color: #ffffff;
+    }
+    body.dark-theme h1 {
+      color: #22d3ee;
+    }
+    body.dark-theme p {
+      color: #a0aec0;
+    }
+    body.dark-theme a {
+      color: #22d3ee;
+      transition: color 0.3s ease;
+    }
+    body.dark-theme a:hover {
+      color: #06b6d4;
+    }
+    body.dark-theme .glass-box {
+      color: #e2e8f0;
+    }
+    body.dark-theme #prediction-output {
+      color: #22d3ee;
+    }
+    body.dark-theme label {
+      color: #a0aec0;
+    }
+    body.dark-theme input[type="range"] {
+      background-color: #4a5568;
+    }
+    body.dark-theme input[type="range"]::-webkit-slider-thumb {
+      background-color: #22d3ee;
+    }
+    body.dark-theme .loading {
+      color: #e2e8f0;
+    }
 
-            .output_canvas, .input_video {
-                height: 100%;
-                width: auto;
-                max-width: 100%;
-            }
-        }
+    body.light-theme {
+      background-color: #f7fafc;
+      color: #2d3748;
+    }
+    body.light-theme h1 {
+      color: #0d9488;
+    }
+    body.light-theme p {
+      color: #4a5568;
+    }
+    body.light-theme a {
+      color: #0d9488;
+      transition: color 0.3s ease;
+    }
+    body.light-theme a:hover {
+      color: #0f766e;
+    }
+    body.light-theme .glass-box {
+      color: #2d3748;
+    }
+    body.light-theme #prediction-output {
+      color: #0d9488;
+    }
+    body.light-theme label {
+      color: #4a5568;
+    }
+    body.light-theme input[type="range"] {
+      background-color: #cbd5e0;
+    }
+    body.light-theme input[type="range"]::-webkit-slider-thumb {
+      background-color: #0d9488;
+    }
+    body.light-theme .loading {
+      color: #2d3748;
+    }
 
+    .glass-box {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 2.5rem;
+      border-radius: 2.5rem;
+      width: 100%;
+      max-width: 600px;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
 
-        .output_canvas, .input_video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 0.75rem;
-        }
-        .input_video {
-             transform: scaleX(-1); /* Flip horizontally for a mirror effect */
-        }
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 1.25rem;
-            font-weight: 500;
-            text-align: center;
-        }
-    </style>
+    .container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: auto;
+      aspect-ratio: 640 / 480;
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        width: 90vw;
+        height: 70vh;
+        aspect-ratio: unset;
+        overflow-y: auto;
+      }
+
+      .input_video,
+      .output_canvas {
+        height: 100%;
+        width: auto;
+        max-width: 100%;
+      }
+    }
+
+    .output_canvas, .input_video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 2.5rem;
+      object-fit: cover;
+    }
+
+    .input_video {
+      transform: scaleX(-1);
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.25rem;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .bg-circles {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .circle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.6;
+      filter: blur(50px);
+    }
+
+    .circle-1 { width: 300px; height: 300px; background: linear-gradient(135deg, rgba(74, 222, 128, 0.8), rgba(6, 182, 212, 0.8)); top: 10%; left: 5%; }
+    .circle-2 { width: 400px; height: 400px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(250, 204, 21, 0.8)); bottom: 5%; right: 10%; }
+    .circle-3 { width: 250px; height: 250px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.8), rgba(236, 72, 153, 0.8)); top: 60%; left: 20%; }
+    .circle-4 { width: 350px; height: 350px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.8), rgba(251, 191, 36, 0.8)); top: 5%; right: 15%; }
+    .circle-5 { width: 200px; height: 200px; background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(203, 213, 225, 0.8)); bottom: 20%; left: 10%; }
+
+    body.light-theme .circle { opacity: 0.3; filter: blur(40px); }
+    body.light-theme .circle-1 { background: linear-gradient(135deg, rgba(74, 222, 128, 0.5), rgba(6, 182, 212, 0.5)); }
+    body.light-theme .circle-2 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(250, 204, 21, 0.5)); }
+    body.light-theme .circle-3 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(236, 72, 153, 0.5)); }
+    body.light-theme .circle-4 { background: linear-gradient(135deg, rgba(96, 165, 250, 0.5), rgba(251, 191, 36, 0.5)); }
+    body.light-theme .circle-5 { background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(203, 213, 225, 0.8)); }
+  </style>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+<body class="bg-white-900 text-white flex items-center justify-center min-h-screen p-4 dark-theme">
+  <div class="bg-circles">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+    <div class="circle circle-4"></div>
+    <div class="circle circle-5"></div>
+  </div>
 
-    <div class="w-full max-w-3xl mx-auto text-center">
-        <a href="index.html" class="text-cyan-400 hover:text-cyan-300 mb-8 inline-block">&larr; Back to Home</a>
-        <h1 class="text-3xl md:text-4xl font-bold mb-2">YOLOv8 Hand Gesture Detector</h1>
-        <p class="text-gray-400 mb-6">Using your new color-aware model!</p>
+  <div class="w-full max-w-3xl mx-auto text-center relative z-10">
+    <a href="index.html" class="text-cyan-400 hover:text-cyan-300 mb-8 inline-block">&larr; Kembali ke Beranda</a>
+    <h1 class="text-3xl md:text-4xl font-bold mb-2">Detektor Gerakan Tangan YOLOv8</h1>
+    <p class="text-white-400 mb-6">© Jawa_321 & zeiz4s</p>
 
-        <div class="video-container bg-gray-800 rounded-xl p-2">
-            <video class="input_video" autoplay playsinline></video>
-            <canvas class="output_canvas"></canvas>
-            <div class="loading">
-                <p id="loading-text">Loading Camera and Model...</p>
-            </div>
-        </div>
-        
-        <div class="mt-6 flex flex-col md:flex-row justify-center items-center gap-6">
-            <div id="prediction-display" class="bg-gray-800 rounded-lg p-4 w-full md:w-auto">
-                 <p class="text-2xl font-bold text-cyan-400">Predicted: <span id="prediction-output">...</span></p>
-            </div>
-            <div class="text-left bg-gray-800 rounded-lg p-4 w-full md:w-auto">
-                <label for="confidenceSlider" class="text-sm text-gray-400">Confidence: <span id="confidenceValue">50</span>%</label>
-                <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-            </div>
-        </div>
+    <div class="container glass-box">
+      <video class="input_video" autoplay playsinline></video>
+      <canvas class="output_canvas" width="640" height="480"></canvas>
+      <div class="loading">
+        <p id="loading-text">Memuat Kamera dan Model...</p>
+      </div>
     </div>
+
+    <div class="mt-6 flex flex-col md:flex-row justify-center items-center gap-6">
+      <div id="prediction-display" class="glass-box">
+        <p class="text-2xl font-bold text-cyan-400">Terdeteksi: <span id="prediction-output">...</span></p>
+      </div>
+      <div class="text-left glass-box">
+        <label for="confidenceSlider" class="text-sm text-white-400">Keyakinan: <span id="confidenceValue">50</span>%</label>
+        <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+      </div>
+    </div>
+  </div>
+    <!-- Footer -->
+    <footer class="flex justify-center mt-12 mb-6 px-4">
+        <div class="glass-box text-sm px-6 py-3 rounded-full shadow-lg">
+            <p class="font-medium tracking-wide">© Jawa_321 & zeiz4s</p>
+        </div>
+    </footer>
+</body>
 
 <script type="module">
     const videoElement = document.querySelector('.input_video');
