@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image-Based Gesture Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto text-center">
+        <a href="index.html" class="text-cyan-400 hover:text-cyan-300 mb-8 inline-block">&larr; Back to Home</a>
+        <h1 class="text-3xl md:text-4xl font-bold mb-4">Image Gesture Detector</h1>
+        <p class="text-gray-400 mb-6">Upload an image to detect the hand gesture.</p>
+
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600 cursor-pointer"/>
+            <div id="image-container" class="mt-4 hidden">
+                <canvas id="output_canvas" class="max-w-full h-auto rounded-lg"></canvas>
+            </div>
+            <p id="prediction-output" class="text-2xl font-bold text-cyan-400 mt-4 h-8"></p>
+        </div>
+    </div>
+
+<script type="module">
+    const imageUpload = document.getElementById('imageUpload');
+    const imageContainer = document.getElementById('image-container');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const predictionOutput = document.getElementById('prediction-output');
+
+    const CLASS_NAMES = { 0: "fist", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five" };
+    let model = null;
+
+    async function loadYoloModel() {
+        predictionOutput.textContent = 'Loading Model...';
+        model = await tf.loadGraphModel('./yolov8n_web_model/model.json');
+        predictionOutput.textContent = 'Upload an image to begin.';
+        console.log("YOLOv8 model loaded successfully.");
+    }
+
+    imageUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file || !model) return;
+
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            img.onload = async () => {
+                imageContainer.classList.remove('hidden');
+                canvasElement.width = img.width;
+                canvasElement.height = img.height;
+                canvasCtx.drawImage(img, 0, 0);
+                await detect(img);
+            };
+        };
+        reader.readAsDataURL(file);
+    });
+
+    async function detect(img) {
+        predictionOutput.textContent = 'Detecting...';
+        const inputTensor = tf.tidy(() => {
+            const frame = tf.browser.fromPixels(img);
+            const resized = tf.image.resizeBilinear(frame, [384, 384]);
+            return resized.div(255.0).expandDims(0);
+        });
+
+        const outputTensor = await model.executeAsync(inputTensor);
+        const [boxes, scores, classes] = await processOutput(outputTensor, 0.5, 0.45);
+        drawResults(boxes, scores, classes);
+
+        tf.dispose([inputTensor, outputTensor]);
+    }
+
+    async function processOutput(output, confidenceThreshold, iouThreshold) {
+        const [boxes, scores, classes] = tf.tidy(() => {
+            const predictions = output.squeeze(0).transpose();
+            const numDetections = predictions.shape[0];
+            const boxes = predictions.slice([0, 0], [numDetections, 4]);
+            const classProbs = predictions.slice([0, 4], [numDetections, 6]);
+            const scores = classProbs.max(1);
+            const classes = classProbs.argMax(1);
+            return [boxes, scores, classes];
+        });
+
+        const nmsIndices = await tf.image.nonMaxSuppressionAsync(boxes, scores, 50, iouThreshold, confidenceThreshold);
+        const nmsBoxes = tf.gather(boxes, nmsIndices).arraySync();
+        const nmsScores = tf.gather(scores, nmsIndices).arraySync();
+        const nmsClasses = tf.gather(classes, nmsIndices).arraySync();
+        tf.dispose([boxes, scores, classes, nmsIndices]);
+        return [nmsBoxes, nmsScores, nmsClasses];
+    }
+
+    function drawResults(boxes, scores, classes) {
+        let detectedGesture = "No gesture detected.";
+        for (let i = 0; i < scores.length; ++i) {
+            const [x, y, w, h] = boxes[i];
+            const label = CLASS_NAMES[classes[i]];
+            const score = (scores[i] * 100).toFixed(1);
+            detectedGesture = `${label} (Confidence: ${score}%)`;
+
+            const x1 = (x - w / 2) * canvasElement.width;
+            const y1 = (y - h / 2) * canvasElement.height;
+            const width = w * canvasElement.width;
+            const height = h * canvasElement.height;
+
+            canvasCtx.strokeStyle = '#06B6D4';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeRect(x1, y1, width, height);
+            canvasCtx.fillStyle = '#06B6D4';
+            const textWidth = canvasCtx.measureText(detectedGesture).width;
+            canvasCtx.fillRect(x1, y1 - 25, textWidth + 10, 25);
+            canvasCtx.fillStyle = '#FFFFFF';
+            canvasCtx.font = '18px Inter';
+            canvasCtx.fillText(detectedGesture, x1 + 5, y1 - 5);
+        }
+        predictionOutput.textContent = detectedGesture;
+    }
+
+    loadYoloModel();
+</script>
+</body>
+</html>

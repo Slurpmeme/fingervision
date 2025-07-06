@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Hand Gesture Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+
+    <!-- MediaPipe for hand landmarks (for ESP effect) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.js" crossorigin="anonymous"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: auto;
+        }
+        /* Canvas and video will be stacked on top of each other */
+        .output_canvas, .input_video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: auto;
+            border-radius: 0.75rem;
+        }
+        .input_video {
+             transform: scaleX(-1); /* Flip horizontally for a mirror effect */
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl mx-auto text-center">
+        <a href="index.html" class="text-cyan-400 hover:text-cyan-300 mb-8 inline-block">&larr; Back to Home</a>
+        <h1 class="text-3xl md:text-4xl font-bold mb-2">YOLOv8 Hand Gesture Detector</h1>
+        <p class="text-gray-400 mb-6">Using your new color-aware model!</p>
+
+        <div class="container bg-gray-800 rounded-xl p-2" style="aspect-ratio: 640 / 480;">
+            <video class="input_video" autoplay playsinline></video>
+            <canvas class="output_canvas" width="640" height="480"></canvas>
+            <div class="loading">
+                <p id="loading-text">Loading Camera and Model...</p>
+            </div>
+        </div>
+        
+        <div class="mt-6 flex justify-center items-center gap-6">
+            <div id="prediction-display" class="bg-gray-800 rounded-lg p-4">
+                 <p class="text-2xl font-bold text-cyan-400">Predicted: <span id="prediction-output">...</span></p>
+            </div>
+            <div class="text-left bg-gray-800 rounded-lg p-4">
+                <label for="confidenceSlider" class="text-sm text-gray-400">Confidence: <span id="confidenceValue">50</span>%</label>
+                <input type="range" id="confidenceSlider" min="10" max="90" value="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    const videoElement = document.querySelector('.input_video');
+    const canvasElement = document.querySelector('.output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const loadingText = document.getElementById('loading-text');
+    const predictionOutput = document.getElementById('prediction-output');
+    
+    const confidenceSlider = document.getElementById('confidenceSlider');
+    const confidenceValueSpan = document.getElementById('confidenceValue');
+
+    confidenceSlider.addEventListener('input', (event) => {
+        confidenceValueSpan.textContent = event.target.value;
+    });
+
+    const CLASS_NAMES = {
+        0: "fist", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five"
+    };
+    
+    let model = null;
+    let handLandmarks = null;
+    let trail = [];
+    const MAX_TRAIL_LENGTH = 100;
+
+    const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
+    });
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+    });
+    hands.onResults(results => {
+        handLandmarks = results.multiHandLandmarks && results.multiHandLandmarks.length > 0 ? results.multiHandLandmarks[0] : null;
+    });
+
+    async function loadYoloModel() {
+        try {
+            loadingText.innerText = "Loading YOLOv8 Model...";
+            model = await tf.loadGraphModel('./yolov8n_web_model/model.json');
+            console.log("YOLOv8 model loaded successfully.");
+            
+            const dummyInput = tf.zeros([1, 384, 384, 3]);
+            await model.executeAsync(dummyInput);
+            tf.dispose(dummyInput);
+
+        } catch (error) {
+            console.error("Error loading YOLOv8 model:", error);
+            loadingText.innerText = "Error loading model. Check console.";
+        }
+    }
+
+    async function main() {
+        await loadYoloModel();
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.srcObject = stream;
+        
+        videoElement.onloadedmetadata = () => {
+            loadingText.style.display = 'none';
+            requestAnimationFrame(detect);
+        };
+    }
+
+    async function detect() {
+        if (!model) {
+            requestAnimationFrame(detect);
+            return;
+        }
+        
+        await hands.send({image: videoElement});
+
+        const inputTensor = tf.tidy(() => {
+            const frame = tf.browser.fromPixels(videoElement);
+            const resized = tf.image.resizeBilinear(frame, [384, 384]);
+            return resized.div(255.0).expandDims(0);
+        });
+
+        const outputTensor = await model.executeAsync(inputTensor);
+        
+        const confidenceThreshold = parseInt(confidenceSlider.value) / 100;
+        const [boxes, scores, classes] = await processOutput(outputTensor, confidenceThreshold, 0.45);
+
+        drawResults(boxes, scores, classes);
+        
+        tf.dispose([inputTensor, outputTensor]);
+
+        requestAnimationFrame(detect);
+    }
+
+    async function processOutput(output, confidenceThreshold, iouThreshold) {
+        const [boxes, scores, classes] = tf.tidy(() => {
+            const predictions = output.squeeze(0).transpose(); 
+            const numDetections = predictions.shape[0];
+            
+            const boxes = predictions.slice([0, 0], [numDetections, 4]);
+            const classProbs = predictions.slice([0, 4], [numDetections, 6]);
+            const scores = classProbs.max(1);
+            const classes = classProbs.argMax(1);
+
+            return [boxes, scores, classes];
+        });
+
+        const nmsIndices = await tf.image.nonMaxSuppressionAsync(boxes, scores, 50, iouThreshold, confidenceThreshold);
+        
+        const nmsBoxes = tf.gather(boxes, nmsIndices).arraySync();
+        const nmsScores = tf.gather(scores, nmsIndices).arraySync();
+        const nmsClasses = tf.gather(classes, nmsIndices).arraySync();
+
+        tf.dispose([boxes, scores, classes, nmsIndices]);
+
+        return [nmsBoxes, nmsScores, nmsClasses];
+    }
+
+    function drawResults(boxes, scores, classes) {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+        
+        let detectedGesture = "...";
+        let isOneSign = false;
+
+        if (boxes.length > 0) {
+            const label = CLASS_NAMES[classes[0]];
+            if (label === 'one') isOneSign = true;
+
+            const score = (scores[0] * 100).toFixed(1);
+            detectedGesture = `${label} (Conf: ${score}%)`;
+        }
+        
+        if (handLandmarks) {
+            drawConnectors(canvasCtx, handLandmarks, HAND_CONNECTIONS, { color: 'lime', lineWidth: 2 });
+            drawLandmarks(canvasCtx, handLandmarks, { color: 'red', radius: 4 });
+
+            if (isOneSign) {
+                const pointerTip = handLandmarks[8];
+                for (let i = 0; i < 3; i++) {
+                    trail.push({
+                        x: pointerTip.x * canvasElement.width,
+                        y: pointerTip.y * canvasElement.height,
+                        alpha: 1.0,
+                        size: 8
+                    });
+                }
+            }
+        }
+        
+        drawAndAnimateTrail();
+        predictionOutput.textContent = detectedGesture;
+    }
+
+    function drawAndAnimateTrail() {
+        while (trail.length > MAX_TRAIL_LENGTH) {
+            trail.shift();
+        }
+        for (let i = trail.length - 1; i >= 0; i--) {
+            const p = trail[i];
+            canvasCtx.fillStyle = `rgba(0, 255, 255, ${p.alpha})`; 
+            canvasCtx.beginPath();
+            canvasCtx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
+            canvasCtx.fill();
+            p.alpha -= 0.04;
+            p.size -= 0.15;
+            if (p.alpha <= 0 || p.size <= 0) {
+                trail.splice(i, 1);
+            }
+        }
+    }
+
+    main();
+
+</script>
+</body>
+</html>
