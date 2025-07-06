@@ -22,20 +22,30 @@
         }
         .video-container {
             position: relative;
-            width: 100%;
-            max-width: 640px;
+            width: 90vw;                  /* Keep some margin on mobile */
+            max-width: 640px;            /* Still limit it on larger screens */
+            aspect-ratio: 4 / 3;         /* Default ratio */
             margin: auto;
-            /* Default aspect ratio for desktop */
-            aspect-ratio: 640 / 480;
+            border-radius: 0.75rem;
+            background-color: #1f2937;   /* Tailwind's gray-800 */
+            overflow: hidden;
         }
-        /* --- FIX FOR MOBILE --- */
-        /* On tall, narrow screens, let the height be automatic */
-        @media (orientation: portrait) {
+
+        @media (max-width: 768px) {
             .video-container {
+                height: 70vh;             /* Allow scrolling if needed */
+                width: 90vw;
                 aspect-ratio: unset;
-                height: auto;
+                overflow-y: auto;
+            }
+
+            .output_canvas, .input_video {
+                height: 100%;
+                width: auto;
+                max-width: 100%;
             }
         }
+
 
         .output_canvas, .input_video {
             position: absolute;
