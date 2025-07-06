@@ -3,62 +3,311 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hand Gesture Recognition Project</title>
+    <title>Proyek Pengenalan Gerakan Tangan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* --- Theme Styling --- */
+        /* Dark Theme Default */
+        body.dark-theme {
+            background-color: #1a202c; /* gray-900 */
+            color: #ffffff;
+        }
+        body.dark-theme .split-card .card-content-glass { /* Glassmorphism on content box */
+            background: rgba(255, 255, 255, 0.08); /* Semi-transparent white */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        body.dark-theme .switch-button {
+            background-color: #2d3748; /* gray-800 */
+            color: #a0aec0; /* gray-400 */
+            border: 1px solid #4a5568; /* gray-600 */
+        }
+        body.dark-theme .switch-button:hover {
+            background-color: #4a5568; /* gray-600 */
+        }
+        body.dark-theme .switch-button i {
+            color: #e2e8f0; /* gray-200 */
+        }
+        body.dark-theme h1 {
+            color: #22d3ee; /* cyan-400 */
+        }
+        body.dark-theme h2 {
+            color: #e2e8f0; /* gray-200, biar kontras di atas glassmorphism */
+        }
+        body.dark-theme p {
+            color: #a0aec0; /* gray-400, biar kontras */
+        }
+        body.dark-theme .go-to-page-btn {
+            background-color: #06b6d4; /* cyan-500 */
+            color: #ffffff;
+        }
+        body.dark-theme .go-to-page-btn.teal {
+            background-color: #14b8a6; /* teal-500 */
+        }
+
+
+        /* Light Theme */
+        body.light-theme {
+            background-color: #f7fafc; /* gray-100 */
+            color: #2d3748; /* gray-800 */
+        }
+        body.light-theme .split-card .card-content-glass { /* Glassmorphism on content box */
+            background: rgba(255, 255, 255, 0.8); /* Semi-transparent white */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.5); /* gray-200 with transparency */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        body.light-theme .switch-button {
+            background-color: #ffffff; /* white */
+            color: #4a5568; /* gray-700 */
+            border: 1px solid #e2e8f0; /* gray-200 */
+        }
+        body.light-theme .switch-button:hover {
+            background-color: #edf2f7; /* gray-100 */
+        }
+        body.light-theme .switch-button i {
+            color: #4a5568; /* gray-700 */
+        }
+        body.light-theme h1 {
+            color: #0d9488; /* teal-600 */
+        }
+        body.light-theme h2 {
+            color: #2d3748; /* gray-800 */
+        }
+        body.light-theme p {
+            color: #4a5568; /* gray-700 */
+        }
+        body.light-theme .go-to-page-btn {
+            background-color: #0f766e; /* teal-700 */
+            color: #ffffff;
+        }
+        body.light-theme .go-to-page-btn.teal {
+            background-color: #0d9488; /* teal-600 */
+        }
+
+
+        /* --- General Card & Button Styles --- */
         .split-card {
             background-size: cover;
             background-position: center;
+            /* background-image tetap ada di sini untuk kartu itu sendiri */
+            position: relative;
+            display: flex; /* Untuk memposisikan card-content-glass di tengah */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer; /* Menandakan bisa diklik */
         }
+
         .split-card:hover {
             transform: scale(1.03);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
         }
-        .card-overlay {
-            background: rgba(0, 0, 0, 0.6);
+        .split-card:active { /* Efek tekan */
+            transform: scale(0.98);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ini adalah div yang akan memiliki efek glassmorphism */
+        .card-content-glass {
+            padding: 2rem; /* p-8 */
+            border-radius: 0.75rem; /* rounded-xl */
+            width: 80%; /* Kontrol lebar box teks */
+            max-width: 320px; /* Lebar maksimum agar minimalis */
+            box-sizing: border-box;
+            transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+            z-index: 2; /* Pastikan di atas gambar latar */
+        }
+
+        /* Overlay gelap di atas gambar latar belakang kartu */
+        .card-image-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5); /* Gelap untuk kontras */
             transition: background 0.3s ease;
+            z-index: 1; /* Di bawah card-content-glass */
         }
-        .split-card:hover .card-overlay {
-            background: rgba(0, 0, 0, 0.4);
+        .split-card:hover .card-image-overlay {
+             background: rgba(0, 0, 0, 0.4); /* Sedikit lebih terang saat hover */
         }
+
+
+        .go-to-page-btn {
+            display: inline-block;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none; /* Remove underline for links */
+        }
+        .go-to-page-btn:hover {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+        .go-to-page-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .switch-button {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 9999px; /* Full rounded */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* medium */
+            z-index: 100;
+        }
+
+        /* Circles in the background */
+        .bg-circles {
+            position: fixed; /* Fixed to cover the whole viewport */
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Make them unclickable */
+            overflow: hidden;
+            z-index: -1; /* Send to back */
+        }
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.6;
+            filter: blur(50px); /* Adjust blur for the desired effect */
+        }
+        /* Positions and colors for circles */
+        .circle-1 { width: 300px; height: 300px; background: linear-gradient(135deg, rgba(74, 222, 128, 0.8), rgba(6, 182, 212, 0.8)); top: 10%; left: 5%; }
+        .circle-2 { width: 400px; height: 400px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), rgba(250, 204, 21, 0.8)); bottom: 5%; right: 10%; }
+        .circle-3 { width: 250px; height: 250px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.8), rgba(236, 72, 153, 0.8)); top: 60%; left: 20%; }
+        .circle-4 { width: 350px; height: 350px; background: linear-gradient(135deg, rgba(96, 165, 250, 0.8), rgba(251, 191, 36, 0.8)); top: 5%; right: 15%; }
+        .circle-5 { width: 200px; height: 200px; background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(203, 213, 225, 0.8)); bottom: 20%; left: 10%; }
+
+        /* Adjust circle colors for light theme */
+        body.light-theme .circle { opacity: 0.3; filter: blur(40px); }
+        body.light-theme .circle-1 { background: linear-gradient(135deg, rgba(74, 222, 128, 0.5), rgba(6, 182, 212, 0.5)); }
+        body.light-theme .circle-2 { background: linear-gradient(135deg, rgba(239, 68, 68, 0.5), rgba(250, 204, 21, 0.5)); }
+        body.light-theme .circle-3 { background: linear-gradient(135deg, rgba(168, 85, 247, 0.5), rgba(236, 72, 153, 0.5)); }
+        body.light-theme .circle-4 { background: linear-gradient(135deg, rgba(96, 165, 250, 0.5), rgba(251, 191, 36, 0.5)); }
+        body.light-theme .circle-5 { background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(203, 213, 225, 0.8)); }
+        
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-gray-900 text-white dark-theme flex flex-col min-h-screen">
+    <!-- Background Circles -->
+    <div class="bg-circles">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+        <div class="circle circle-4"></div>
+        <div class="circle circle-5"></div>
+    </div>
 
-    <div class="container mx-auto px-4 py-12 text-center">
-        <h1 class="text-4xl md:text-6xl font-bold mb-12 text-cyan-400">Hand Gesture Recognition</h1>
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-12 text-center relative z-10 flex-1">
+        <button id="theme-switch" class="switch-button">
+            <i class="fas fa-moon"></i>
+            <span>Dark Mode</span>
+        </button>
+
+        <h1 class="text-4xl md:text-6xl font-bold mb-12 text-cyan-400">Pengenalan Gerakan Tangan</h1>
 
         <div class="flex flex-col md:flex-row gap-8">
-            <!-- Image Classification Card -->
-            <div class="split-card flex-1 h-96 rounded-xl overflow-hidden relative flex items-center justify-center" style="background-image: url('images.jpeg');">
-                <div class="card-overlay absolute inset-0"></div>
-                <div class="relative z-10 p-8 text-center">
-                    <h2 class="text-3xl font-bold mb-4">Image Classification</h2>
-                    <p class="mb-6 text-gray-300">Upload a static image of a hand and let the model detect the gesture.</p>
-                    <a href="image.html" class="inline-block bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg transition-colors">
-                        Go to Page
+            <!-- Gambar Card -->
+            <div class="split-card flex-1 h-96 rounded-xl overflow-hidden relative" style="background-image: url('images.jpeg');" onclick="location.href='image.html'">
+                <div class="card-image-overlay"></div>
+                <div class="card-content-glass">
+                    <h2 class="text-3xl font-bold mb-4">Klasifikasi Gambar</h2>
+                    <p class="mb-6">Unggah gambar tangan statis dan biarkan model mendeteksi gerakannya.</p>
+                    <a href="image.html" class="go-to-page-btn bg-cyan-500 hover:bg-cyan-600 text-white">
+                        Kunjungi Halaman
                     </a>
                 </div>
             </div>
 
-            <!-- Real-Time Vision Card -->
-            <div class="split-card flex-1 h-96 rounded-xl overflow-hidden relative flex items-center justify-center" style="background-image: url('vision.jpg');">
-                <div class="card-overlay absolute inset-0"></div>
-                <div class="relative z-10 p-8 text-center">
-                    <h2 class="text-3xl font-bold mb-4">Real-Time Vision</h2>
-                    <p class="mb-6 text-gray-300">Use your webcam for live hand gesture detection and classification.</p>
-                    <a href="vision.html" class="inline-block bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-8 rounded-lg transition-colors">
-                        Go to Page
+            <!-- Vision Card -->
+            <div class="split-card flex-1 h-96 rounded-xl overflow-hidden relative" style="background-image: url('vision.jpg');" onclick="location.href='vision.html'">
+                <div class="card-image-overlay"></div>
+                <div class="card-content-glass">
+                    <h2 class="text-3xl font-bold mb-4">Deteksi Waktu Nyata</h2>
+                    <p class="mb-6">Gunakan webcam Anda untuk deteksi dan klasifikasi gerakan tangan secara langsung.</p>
+                    <a href="vision.html" class="go-to-page-btn bg-teal-500 hover:bg-teal-600 text-white teal">
+                        Kunjungi Halaman
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="flex justify-center mt-12 mb-6 px-4">
+        <div class="glass-box text-sm px-6 py-3 rounded-full shadow-lg">
+            <p class="font-medium tracking-wide">© Jawa_321 & zeiz4s</p>
+        </div>
+    </footer>
+</body>
+
+
+
+    <script>
+        const themeSwitchButton = document.getElementById('theme-switch');
+        const body = document.body;
+
+        // Function to set theme
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                body.classList.add('dark-theme');
+                body.classList.remove('light-theme');
+                themeSwitchButton.innerHTML = '<i class="fas fa-moon"></i> <span>Dark Mode</span>';
+            } else {
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+                themeSwitchButton.innerHTML = '<i class="fas fa-sun"></i> <span>Light Mode</span>';
+            }
+            // Simpan preferensi tema ke localStorage
+            localStorage.setItem('theme', theme);
+        }
+
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else {
+            // Default to dark theme if no preference is saved or if it's the first visit
+            // or check system preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        }
+
+        // Toggle theme on button click
+        themeSwitchButton.addEventListener('click', () => {
+            if (body.classList.contains('dark-theme')) {
+                setTheme('light');
+            } else {
+                setTheme('dark');
+            }
+        });
+    </script>
 </body>
 </html>
